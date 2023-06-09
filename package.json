@@ -1,7 +1,7 @@
 {
   "name": "console-logs-remover",
   "displayName": "console Logs Remover",
-  "description": "Remove all console logs",
+  "description": "Remove all console logs,Tip You can undo",
   "version": "0.0.1",
   "publisher": "IanNjoroge",
   "engines": {

@@ -5,9 +5,11 @@
 
 Remove All console logs from your project.Tip You can undo
 
-## Requirements
+## Usage
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+ctrl + shift + p
+Remove Console Logs
+
 
 
 
