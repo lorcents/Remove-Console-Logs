@@ -1,8 +1,9 @@
 {
-  "name": "console-log-remover",
-  "displayName": "console Log Remover",
+  "name": "console-logs-remover",
+  "displayName": "console Logs Remover",
   "description": "Remove all console logs",
   "version": "0.0.1",
+  "publisher": "IanNjoroge",
   "engines": {
     "vscode": "^1.78.0"
   },

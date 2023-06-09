@@ -9,7 +9,7 @@ let commandRegistered = false;
 function activate(extensionContext) {
     context = extensionContext;
 
-	const extension = vscode.extensions.getExtension('console-log-remover');
+	const extension = vscode.extensions.getExtension('console-logs-remover');
     if (extension && !commandRegistered) {
         let disposable = vscode.commands.registerCommand('extension.removeConsoleLogs', function () {
             const workspaceFolders = vscode.workspace.workspaceFolders;
