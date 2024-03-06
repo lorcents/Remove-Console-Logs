@@ -2,7 +2,7 @@
   "name": "console-logs-remover",
   "displayName": "console Logs Remover",
   "description": "Remove all console logs,Tip You can undo",
-  "icon": "assets/Console log Remover.png",
+  "icon": "assets/ConsolelogRemover.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/lorcents/Remove-Console-Logs.git"
