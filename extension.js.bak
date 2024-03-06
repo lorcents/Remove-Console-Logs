@@ -70,12 +70,12 @@ function processFile(filePath) {
         if (!originalCodeMap.has(filePath)) {
             fs.writeFileSync(backupFilePath, code, 'utf-8');
             originalCodeMap.set(filePath, backupFilePath);
-            
+            console.log(`Created backup file: ${backupFilePath}`);
         }
 
         // Write the modified code to the file
         fs.writeFileSync(filePath, modifiedCode, 'utf-8');
-        
+        console.log(`Removed console log statements from ${filePath}`);
 
         showUndoButton(() => {
             undoRemoveConsoleLogs(filePath);
@@ -96,12 +96,12 @@ function undoRemoveConsoleLogs(filePath) {
         const backupFilePath = originalCodeMap.get(filePath);
         const originalCode = fs.readFileSync(backupFilePath, 'utf-8');
         fs.writeFileSync(filePath, originalCode, 'utf-8');
-        
+        console.log(`Restored original code in ${filePath}`);
 
         // Delete the backup file
         fs.unlinkSync(backupFilePath);
         originalCodeMap.delete(filePath);
-        
+        console.log(`Deleted backup file: ${backupFilePath}`);
 
         removeUndoButton();
     }
