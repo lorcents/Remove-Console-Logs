@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/lorcents/Remove-Console-Logs"
   },
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "IanNjoroge",
   "engines": {
     "vscode": "^1.78.0"
