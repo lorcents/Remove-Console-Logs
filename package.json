@@ -5,7 +5,7 @@
   "icon": "assets/Console log Remover.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lorcents/Remove-Console-Logs"
+    "url": "https://github.com/lorcents/Remove-Console-Logs.git"
   },
   "version": "0.2.0",
   "publisher": "IanNjoroge",
