@@ -12,7 +12,7 @@ Simply hit `ctrl + shift + p`, select "Remove Console Logs," and watch those log
 
 Be cautious! Undoing might have a mind of its own and could play tricks on you. 🤔💡
 
-### 1.0.0 🎉
+### 1.0.1 🎉
 
 The initial release is here! Time to clean up your code and enjoy a console-log-free coding adventure! 🚀🎊
 
