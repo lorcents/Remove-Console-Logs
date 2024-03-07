@@ -1,7 +1,7 @@
 {
   "name": "console-logs-remover",
-  "displayName": "console Logs Remover",
-  "description": "Remove all console logs,Tip You can undo",
+  "displayName": "Console Logs Remover",
+  "description": "Remove all console logs. You can undo.",
   "icon": "assets/ConsolelogRemover.png",
   "repository": {
     "type": "git",
@@ -14,9 +14,6 @@
   },
   "categories": [
     "Other"
-  ],
-  "activationEvents": [
-    "onCommand:extension.removeConsoleLogs"
   ],
   "main": "./extension.js",
   "contributes": {

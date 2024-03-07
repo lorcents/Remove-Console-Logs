@@ -1,131 +1,126 @@
 const vscode = require('vscode');
-const fs = require('fs');
-const path = require('path');
 
-let context;
-let originalCodeMap = new Map();
 let commandRegistered = false;
+let undoDisposable;
+let originalCodeMap = new Map();
 
-function activate(extensionContext) {
-    context = extensionContext;
-
-	const extension = vscode.extensions.getExtension('console-logs-remover');
-    if (extension && !commandRegistered) {
-        let disposable = vscode.commands.registerCommand('extension.removeConsoleLogs', function () {
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (!workspaceFolders) {
-                vscode.window.showErrorMessage('No workspace folders found.');
-                return;
-            }
-
-            workspaceFolders.forEach(folder => {
-                const folderPath = folder.uri.fsPath;
-                processFolder(folderPath);
-            });
-        });
-
-        context.subscriptions.push(disposable);
-        commandRegistered = true;
-    }
-
-    let disposable = vscode.commands.registerCommand('extension.removeConsoleLogs', function () {
+async function activate(context) {
+    const commandDisposable = vscode.commands.registerCommand('extension.removeConsoleLogs', async function () {
         const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) {
-            vscode.window.showErrorMessage('No workspace folders found.');
-            return;
-        }
 
-        workspaceFolders.forEach(folder => {
-            const folderPath = folder.uri.fsPath;
-            processFolder(folderPath);
-        });
-    });
+        if (workspaceFolders && workspaceFolders.length > 0) {
+            vscode.window.showInformationMessage('Looking for console logs in the workspace...');
 
-    context.subscriptions.push(disposable);
-}
+            let totalRemovedCount = 0;
 
-function processFolder(folderPath) {
-    const files = fs.readdirSync(folderPath);
-    files.forEach(file => {
-        const filePath = path.join(folderPath, file);
-        const stat = fs.statSync(filePath);
+            for (const folder of workspaceFolders) {
+                const folderPath = folder.uri.fsPath;
+                const files = await vscode.workspace.findFiles(
+                    new vscode.RelativePattern(folderPath, '**/*.{js,jsx,ts,tsx}'),
+                    '**/node_modules/**'
+                );
 
-        if (stat.isDirectory()) {
-            processFolder(filePath);
-        } else if (file.endsWith('.js')) {
-            processFile(filePath);
-        }
-    });
-}
+                for (const file of files) {
+                    const document = await vscode.workspace.openTextDocument(file);
+                    const edits = await processFile(document);
 
-function processFile(filePath) {
-    const code = fs.readFileSync(filePath, 'utf-8');
-    const consoleLogRegex = /console\.log\s*\([\s\S]*?\);/g;
-
-    if (consoleLogRegex.test(code)) {
-        const modifiedCode = code.replace(consoleLogRegex, '');
-        const backupFilePath = `${filePath}.bak`;
-
-        // Create a backup file with the original code if it doesn't exist
-        if (!originalCodeMap.has(filePath)) {
-            fs.writeFileSync(backupFilePath, code, 'utf-8');
-            originalCodeMap.set(filePath, backupFilePath);
-            
-        }
-
-        // Write the modified code to the file
-        fs.writeFileSync(filePath, modifiedCode, 'utf-8');
-        
-
-        showUndoButton(() => {
-            undoRemoveConsoleLogs(filePath);
-        });
-
-        vscode.window.showInformationMessage('Console log statements removed.', { modal: false }, 'Undo').then(result => {
-            if (result === 'Undo') {
-                undoRemoveConsoleLogs(filePath);
+                    if (edits.length > 0) {
+                        totalRemovedCount += edits.length;
+                        applyEdits(document.uri, edits);
+                        showUndoButton(context, document.uri);
+                    }
+                }
             }
-        });
-    } else {
-        vscode.window.showInformationMessage('No console log statements found.');
+
+            if (totalRemovedCount === 0) {
+                vscode.window.showInformationMessage('No console log(s) statement found in the workspace.');
+            }
+        } else {
+            vscode.window.showInformationMessage('No workspace found.');
+        }
+    });
+
+    context.subscriptions.push(commandDisposable);
+
+    if (!commandRegistered) {
+        commandRegistered = true;
+        vscode.commands.executeCommand('setContext', 'removeConsoleLogsCommandAvailable', true);
+    }
+
+    const commands = await vscode.commands.getCommands(true);
+    if (commands.includes('extension.undoRemoveConsoleLogs')) {
+        vscode.commands.executeCommand('setContext', 'removeConsoleLogsUndoAvailable', true);
     }
 }
 
-function undoRemoveConsoleLogs(filePath) {
-    if (originalCodeMap.has(filePath)) {
-        const backupFilePath = originalCodeMap.get(filePath);
-        const originalCode = fs.readFileSync(backupFilePath, 'utf-8');
-        fs.writeFileSync(filePath, originalCode, 'utf-8');
-        
+async function processFile(document) {
+    const consoleLogRegex = /console\.log\s*\([\s\S]*?\);?/g;
+    const text = document.getText();
+    const edits = [];
 
-        // Delete the backup file
-        fs.unlinkSync(backupFilePath);
-        originalCodeMap.delete(filePath);
-        
+    let match;
+    while ((match = consoleLogRegex.exec(text))) {
+        const startPosition = document.positionAt(match.index);
+        const endPosition = document.positionAt(match.index + match[0].length);
+        const range = new vscode.Range(startPosition, endPosition);
+        const edit = new vscode.TextEdit(range, '');
+        edits.push(edit);
+    }
+
+    // Store the original code for undo
+    originalCodeMap.set(document.uri, text);
+
+    return edits;
+}
+
+function applyEdits(uri, edits) {
+    const editBuilder = new vscode.WorkspaceEdit();
+    editBuilder.set(uri, edits);
+    vscode.workspace.applyEdit(editBuilder);
+}
+
+function undoRemoveConsoleLogs(uri) {
+    const originalCode = originalCodeMap.get(uri);
+
+    if (originalCode) {
+        const editBuilder = new vscode.WorkspaceEdit();
+        const range = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(1000000, 0)); // Assuming a large range
+
+        editBuilder.replace(uri, range, originalCode);
+        vscode.workspace.applyEdit(editBuilder);
 
         removeUndoButton();
+
+        vscode.window.showInformationMessage('Reverted successfully.');
     }
 }
 
-function showUndoButton(callback) {
-    const undoButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    undoButton.text = 'Undo Remove Console Logs';
-    undoButton.command = 'extension.undoRemoveConsoleLogs';
-    undoButton.tooltip = 'Undo the removal of console log statements';
-    undoButton.show();
+function showUndoButton(context, uri) {
+    removeUndoButton();
 
-    context.subscriptions.push(undoButton);
-    vscode.commands.registerCommand('extension.undoRemoveConsoleLogs', callback);
+    undoDisposable = vscode.commands.registerCommand('extension.undoRemoveConsoleLogs', () => {
+        undoRemoveConsoleLogs(uri);
+    });
+
+    const message = 'Removed console logs. Undo';
+    vscode.window.showInformationMessage(message, { modal: false }, 'Undo').then(result => {
+        if (result === 'Undo') {
+            undoRemoveConsoleLogs(uri);
+        }
+    });
+
+    context.subscriptions.push(undoDisposable);
 }
 
 function removeUndoButton() {
-    context.subscriptions.forEach((subscription) => {
-        subscription.dispose();
-    });
-    originalCodeMap.clear();
+    if (undoDisposable) {
+        undoDisposable.dispose();
+        undoDisposable = undefined;
+    }
 }
 
 function deactivate() {
+    vscode.commands.executeCommand('setContext', 'removeConsoleLogsCommandAvailable', false);
     removeUndoButton();
 }
 
